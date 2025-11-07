@@ -101,6 +101,19 @@ function log_line(string $path, string $msg): void {
     @file_put_contents($path, '['.date('c')."] ".$msg."\n", FILE_APPEND);
 }
 
+// Manejador global de excepciones: responde 500 y registra en log
+set_exception_handler(function($e) use ($logPath) {
+    $msg = ($e instanceof \Throwable) ? $e->getMessage() : 'Error inesperado';
+    log_line($logPath, 'EXCEPCION: '.$msg);
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Cache-Control: no-store');
+    }
+    echo 'Error al generar el voucher: '.$msg;
+    exit;
+});
+
 // Provisión en MikroTik User Manager vía SSH (si ssh2 está disponible)
 function provision_mikrotik(array $router, string $customer, string $username, string $password, string $umProfile, string $logPath): bool {
     $host = $router['host'] ?? '';
@@ -152,7 +165,10 @@ function loadIssued(string $path): array {
 function saveIssued(string $path, array $data): void {
     $dir = dirname($path);
     if (!is_dir($dir)) @mkdir($dir, 0777, true);
-    file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
+    $bytes = @file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
+    if ($bytes === false) {
+        throw new \RuntimeException('No se pudo guardar el registro de vouchers en '. $path);
+    }
 }
 
 function generateCode(int $length, string $charset): string {
@@ -199,6 +215,29 @@ if ($apiResult === null || $apiResult === false) {
 }
 log_line($logPath, $provOk ? 'Provisión UM OK' : 'Provisión UM NO EJECUTADA o FALLÓ (ver líneas anteriores)');
 
+// Si la provisión falló, devolver error JSON
+if (!$provOk) {
+    $errorMsg = 'No se pudo crear el voucher en User Manager. ';
+    if ($apiResult === null) {
+        $errorMsg .= 'Verifica la configuración del router o que las extensiones PHP necesarias estén instaladas (RouterOS API o ssh2).';
+    } else if ($apiResult === false) {
+        $errorMsg .= 'No se pudo conectar al router vía API. Verifica host, puerto, credenciales y que el router esté accesible.';
+    } else {
+        $errorMsg .= 'Error al conectar vía SSH. Verifica que la extensión ssh2 esté instalada y habilitada en PHP.';
+    }
+    
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode([
+        'success' => false,
+        'error' => $errorMsg,
+        'code' => $code,
+        'details' => 'Consulta logs/app.log para más información.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Contenido del ticket (HTML base)
 $primary = $theme['primary'] ?? '#011F4A';
 $accent = $theme['accent'] ?? '#EEB247';
@@ -207,45 +246,44 @@ $ticketHtml = function(string $forPdf) use($hostelName,$code,$profileLabel,$ssid
     if (is_file($pdfLogoPath)) {
         $src = $forPdf === 'pdf' ? $pdfLogoPath : (htmlspecialchars(basename($pdfLogoPath)));
         if ($forPdf !== 'pdf' && !file_exists(basename($pdfLogoPath))) {
-            // intentar servir desde ruta absoluta en HTML, si existe
             $src = $pdfLogoPath;
         }
-        $logoTag = '<img src="'.htmlspecialchars($src).'" style="max-width:100%;height:auto;">';
+        // Limitar tamaño del logo para evitar páginas extras
+        $logoTag = '<img src="'.htmlspecialchars($src).'" style="max-width:60mm;max-height:20mm;height:auto;display:block;margin:0 auto;">';
     }
 
     return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
         .'<style>
-        @page{ size: 80mm auto; margin: 6mm; }
-        body{ font-family: Arial, Helvetica, sans-serif; }
-        .ticket{ width: 80mm; }
-        .brand{ text-align:center; color: '.$primary.'; }
-        .code{ text-align:center; font-size: 28px; letter-spacing:2px; font-weight:700; margin: 8px 0; }
-        .box{ border:1px dashed '.$accent.'; padding:8px; text-align:center; margin:6px 0; }
-        .muted{ color:#555; font-size:12px; }
-        .divider{ height:1px; background: #e5e5e5; margin: 10px 0; }
-        .logo{ text-align:center; margin-bottom:8px; }
-        .title{ font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+        @page{ size: 80mm 150mm; margin: 4mm; }
+        *{ margin: 0; padding: 0; box-sizing: border-box; }
+        body{ font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.3; margin: 0; padding: 0; }
+        .ticket{ width: 100%; max-width: 72mm; margin: 0 auto; padding: 3mm; }
+        .logo{ text-align:center; margin-bottom: 3mm; }
+        .code{ text-align:center; font-size: 22px; letter-spacing: 1px; font-weight: 700; margin: 4mm 0; padding: 3mm; background: #f5f5f5; border: 2px solid '.$primary.'; border-radius: 4px; }
+        .instructions{ font-size: 10px; color: #333; line-height: 1.4; margin: 3mm 0; }
+        .instructions strong{ display: block; margin-bottom: 2mm; font-size: 11px; color: '.$primary.'; }
+        .instructions div{ margin-bottom: 1mm; }
+        .divider{ height: 0.5mm; background: #ddd; margin: 3mm 0; }
+        .footer{ text-align: center; font-size: 9px; color: #666; margin-top: 3mm; font-style: italic; }
+        .wifi-name{ font-weight: bold; color: #000; }
+        .duration{ text-align: center; background: '.$accent.'; color: #fff; padding: 2mm; margin: 2mm 0; border-radius: 3px; font-size: 10px; font-weight: bold; }
         </style></head><body>
         <div class="ticket">
             <div class="logo">'.$logoTag.'</div>
-            <div class="brand">
-              <div class="title">'.htmlspecialchars($hostelName).'</div>
+            <div style="font-family: "Courier New", Courier, monospace; font-weight: bold;">
+                <div class="code">'.htmlspecialchars($code).'</div>
             </div>
             <div class="divider"></div>
-            <div class="code">'.htmlspecialchars($code).'</div>
-            <div class="box">Duración: '.htmlspecialchars($profileLabel).'</div>
-            <div class="box">PIN: <strong>'.htmlspecialchars($code).'</strong></div>
-            <div class="divider"></div>
-            <div class="muted">
-              <div><strong>Cómo conectarse</strong></div>
-              <div>1) Busca la red WiFi: '.htmlspecialchars($ssid).'</div>
-              <div>2) Conéctate a esta red</div>
-              <div>3) Abre tu navegador web</div>
-              <div>4) Ingresa a: '.htmlspecialchars($portal).'</div>
-              <div>5) Escribe el PIN y confirma</div>
+            <div class="instructions">
+              <strong>Instrucciones de Conexión:</strong>
+              <div>1. Busca la red: <span class="wifi-name">'.htmlspecialchars($ssid).'</span></div>
+              <div>2. Conéctate a esta red WiFi</div>
+              <div>3. Abre tu navegador web</div>'.
+              ($portal ? '<div>4. Ve a: '.htmlspecialchars($portal).'</div>' : '').
+              '<div>'.($portal ? '5' : '4').'. Ingresa el código de arriba</div>
             </div>
             <div class="divider"></div>
-            <div class="muted" style="text-align:center;">Gracias por elegirnos</div>
+            <div class="footer">¡Disfruta tu conexión WiFi!</div>
         </div>
         </body></html>';
 };
@@ -272,11 +310,20 @@ if ($mpdfAvailable) {
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
             'format' => [$wMm, $hMm],
-            'margin_left' => 6,
-            'margin_right' => 6,
-            'margin_top' => 6,
-            'margin_bottom' => 6,
+            'margin_left' => 4,
+            'margin_right' => 4,
+            'margin_top' => 4,
+            'margin_bottom' => 4,
+            'margin_header' => 0,
+            'margin_footer' => 0,
+            'orientation' => 'P',
+            'autoPageBreak' => false, // Evitar saltos de página automáticos
         ]);
+        
+        // Deshabilitar encabezado y pie de página
+        $mpdf->SetHTMLHeader('');
+        $mpdf->SetHTMLFooter('');
+        
         $mpdf->WriteHTML($html);
 
         if (!is_dir($ticketsDir)) @mkdir($ticketsDir, 0777, true);
@@ -289,19 +336,23 @@ if ($mpdfAvailable) {
         readfile($outPath);
         exit;
     } catch (Throwable $e) {
-        
+        log_line($logPath, 'Error mPDF: '.$e->getMessage());
     }
 }
 
 if ($dompdfAvailable) {
     try {
         $html = $ticketHtml('pdf');
-        $dompdf = new Dompdf\Dompdf([ 'isRemoteEnabled' => true ]);
+        $dompdf = new Dompdf\Dompdf([
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+            'isFontSubsettingEnabled' => true,
+        ]);
         $dompdf->loadHtml($html, 'UTF-8');
-        // Tamaño página: 80mm x 150mm aprox
+        // Tamaño página: 80mm x 150mm
         $wPt = $paperWidthMm/25.4*72.0; // mm a puntos
         $hPt = 150/25.4*72.0;
-        $dompdf->setPaper([0,0,$wPt,$hPt], 'portrait');
+        $dompdf->setPaper([0, 0, $wPt, $hPt], 'portrait');
         $dompdf->render();
 
         if (!is_dir($ticketsDir)) @mkdir($ticketsDir, 0777, true);
@@ -314,7 +365,7 @@ if ($dompdfAvailable) {
         readfile($outPath);
         exit;
     } catch (Throwable $e) {
-        // Fallback a HTML si Dompdf falla
+        log_line($logPath, 'Error Dompdf: '.$e->getMessage());
     }
 }
 

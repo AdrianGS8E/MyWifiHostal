@@ -1,7 +1,14 @@
-[2025-11-07T08:36:04+01:00] Iniciando provisión UM para código 96F4SW, perfil 2-dias, customer admin
-[2025-11-07T08:36:10+01:00] Excepción API: Unable to establish socket session, Se produjo un error durante el intento de conexión ya que la parte conectada no respondió adecuadamente tras un periodo de tiempo, o bien se produjo un error en la conexión establecida ya que el host conectado no ha podido responder
-[2025-11-07T08:36:10+01:00] Comandos UM a ejecutar:
-[2025-11-07T08:36:10+01:00] /tool user-manager user add customer="admin" username="96F4SW" password="96F4SW" disabled=no
-[2025-11-07T08:36:10+01:00] /tool user-manager user create-and-activate-profile customer="admin" profile="2-dias" numbers="96F4SW"
-[2025-11-07T08:36:10+01:00] Extensión ssh2 no disponible en PHP; no se puede ejecutar en router.
-[2025-11-07T08:36:10+01:00] Provisión UM NO EJECUTADA o FALLÓ (ver líneas anteriores)
+[2025-11-07T19:31:11+01:00] Iniciando provisión UM para código 2K7NZB, perfil 2-dias, customer admin
+[2025-11-07T19:31:17+01:00] Excepción API: Unable to establish socket session, Se produjo un error durante el intento de conexión ya que la parte conectada no respondió adecuadamente tras un periodo de tiempo, o bien se produjo un error en la conexión establecida ya que el host conectado no ha podido responder
+[2025-11-07T19:31:17+01:00] Comandos UM a ejecutar:
+[2025-11-07T19:31:17+01:00] /tool user-manager user add customer="admin" username="2K7NZB" password="2K7NZB" disabled=no
+[2025-11-07T19:31:17+01:00] /tool user-manager user create-and-activate-profile customer="admin" profile="2-dias" numbers="2K7NZB"
+[2025-11-07T19:31:17+01:00] Extensión ssh2 no disponible en PHP; no se puede ejecutar en router.
+[2025-11-07T19:31:17+01:00] Provisión UM NO EJECUTADA o FALLÓ (ver líneas anteriores)
+[2025-11-07T19:50:02+01:00] Iniciando provisión UM para código RE7DZC, perfil 2-dias, customer admin
+[2025-11-07T19:50:08+01:00] Excepción API: Unable to establish socket session, Se produjo un error durante el intento de conexión ya que la parte conectada no respondió adecuadamente tras un periodo de tiempo, o bien se produjo un error en la conexión establecida ya que el host conectado no ha podido responder
+[2025-11-07T19:50:08+01:00] Comandos UM a ejecutar:
+[2025-11-07T19:50:08+01:00] /tool user-manager user add customer="admin" username="RE7DZC" password="RE7DZC" disabled=no
+[2025-11-07T19:50:08+01:00] /tool user-manager user create-and-activate-profile customer="admin" profile="2-dias" numbers="RE7DZC"
+[2025-11-07T19:50:08+01:00] Extensión ssh2 no disponible en PHP; no se puede ejecutar en router.
+[2025-11-07T19:50:08+01:00] Provisión UM NO EJECUTADA o FALLÓ (ver líneas anteriores)

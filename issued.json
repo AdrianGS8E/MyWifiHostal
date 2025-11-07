@@ -1,22 +1,3 @@
 {
-    "issued": [
-        {
-            "code": "DLBNVZ",
-            "ts": "2025-11-07T08:04:39+01:00",
-            "profile": "two_days",
-            "ssid": "HOSTAL BOLIVAR"
-        },
-        {
-            "code": "LJG6HS",
-            "ts": "2025-11-07T08:11:51+01:00",
-            "profile": "two_days",
-            "ssid": "HOSTAL BOLIVAR"
-        },
-        {
-            "code": "96F4SW",
-            "ts": "2025-11-07T08:36:04+01:00",
-            "profile": "two_days",
-            "ssid": "HOSTAL BOLIVAR"
-        }
-    ]
+    "issued": []
 }
