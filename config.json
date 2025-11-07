@@ -1,6 +1,6 @@
 {
   "router": {
-    "host": "192.168.1.100",
+    "host": "192.168.10.1",
     "username": "admin",
     "password": "admin",
     "api_port": 8728,
