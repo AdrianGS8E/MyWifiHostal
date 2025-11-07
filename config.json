@@ -1,0 +1,43 @@
+{
+  "router": {
+    "host": "192.168.1.100",
+    "username": "admin",
+    "password": "admin",
+    "api_port": 8728,
+    "api_ssl": false,
+    "ssh_port": 22,
+    "backend": "user-manager",
+    "customer": "admin",
+    "um_autoprovision": false
+  },
+  "printing": {
+    "use_default_printer": true,
+    "printer_name": "",
+    "paper_width_mm": 80,
+    "font_name": "Courier New",
+    "logo_path": "C:/xampp/htdocs/MyWifiHostal/logo-full-print.png",
+    "output_dir": "./tickets"
+  },
+  "branding": {
+    "hostel_name": "HOSTAL BOLÍVAR",
+    "ssid": "HOSTAL BOLIVAR",
+    "portal_url": "hostalbolivar.net"
+  },
+  "theme": {
+    "primary": "#011F4A",
+    "accent": "#EEB247",
+    "logo_ui": "./logo_hostal1.png"
+  },
+  "vouchers": {
+    "length": 6,
+    "charset": "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+    "prevent_collisions": true,
+    "local_registry_path": "./issued.json",
+    "same_user_and_pass": true
+  },
+  "profiles": {
+    "two_days":  { "um_profile": "2-dias"   },
+    "one_week":  { "um_profile": "1-semana" },
+    "one_month": { "um_profile": "1-mes"    }
+  }
+}

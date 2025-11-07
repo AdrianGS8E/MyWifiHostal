@@ -1,0 +1,4 @@
+/* Minimal custom styles for the UI */
+body{ font-feature-settings: "tnum" on, "cv02" on; }
+.card-title{ color: var(--bs-primary); }
+.navbar-brand img{ object-fit: contain; }
