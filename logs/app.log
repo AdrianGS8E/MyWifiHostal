@@ -12,3 +12,10 @@
 [2025-11-07T19:50:08+01:00] /tool user-manager user create-and-activate-profile customer="admin" profile="2-dias" numbers="RE7DZC"
 [2025-11-07T19:50:08+01:00] Extensión ssh2 no disponible en PHP; no se puede ejecutar en router.
 [2025-11-07T19:50:08+01:00] Provisión UM NO EJECUTADA o FALLÓ (ver líneas anteriores)
+[2025-11-07T21:16:04+01:00] Iniciando provisión UM para código FCASTP, perfil 2-dias, customer admin
+[2025-11-07T21:16:10+01:00] Excepción API: Unable to establish socket session, Se produjo un error durante el intento de conexión ya que la parte conectada no respondió adecuadamente tras un periodo de tiempo, o bien se produjo un error en la conexión establecida ya que el host conectado no ha podido responder
+[2025-11-07T21:16:10+01:00] Comandos UM a ejecutar:
+[2025-11-07T21:16:10+01:00] /tool user-manager user add customer="admin" username="FCASTP" password="FCASTP" disabled=no
+[2025-11-07T21:16:10+01:00] /tool user-manager user create-and-activate-profile customer="admin" profile="2-dias" numbers="FCASTP"
+[2025-11-07T21:16:10+01:00] Extensión ssh2 no disponible en PHP; no se puede ejecutar en router.
+[2025-11-07T21:16:10+01:00] Provisión UM NO EJECUTADA o FALLÓ (ver líneas anteriores)

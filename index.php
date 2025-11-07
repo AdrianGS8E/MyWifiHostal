@@ -139,9 +139,14 @@ $branding = $config['branding'] ?? ['hostel_name'=>'HOSTAL','ssid'=>'WIFI','port
           <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <h5 class="card-title mb-0 fw-semibold" style="color: var(--bs-primary);">🗂️ Vouchers Emitidos</h5>
-              <button class="btn btn-sm btn-outline-primary" onclick="loadVouchers()">
-                <i>🔄</i> Actualizar
-              </button>
+              <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-primary" onclick="loadVouchers()" title="Actualizar lista">
+                  🔄 Actualizar
+                </button>
+                <button class="btn btn-outline-danger" onclick="deleteExpiredVouchers()" title="Eliminar vouchers vencidos">
+                  🗑️ Limpiar Vencidos
+                </button>
+              </div>
             </div>
             
             <div id="vouchersLoading" class="text-center py-5">
@@ -609,6 +614,62 @@ $branding = $config['branding'] ?? ['hostel_name'=>'HOSTAL','ssid'=>'WIFI','port
       } catch (err) {
         alert('Error al eliminar voucher: ' + err.message);
         console.error(err);
+      }
+    }
+    
+    async function deleteExpiredVouchers() {
+      if (!confirm(`🗑️ ¿Eliminar todos los vouchers VENCIDOS?\n\nEsto eliminará automáticamente todos los vouchers cuyo tiempo de validez haya expirado.\n\nVouchers que se eliminarán:\n- 2 días: vencidos hace más de 2 días\n- 1 semana: vencidos hace más de 7 días\n- 1 mes: vencidos hace más de 30 días\n\n¿Continuar?`)) return;
+      
+      try {
+        // Mostrar indicador de carga
+        const vouchersLoading = document.getElementById('vouchersLoading');
+        const vouchersContainer = document.getElementById('vouchersContainer');
+        vouchersContainer.classList.add('d-none');
+        vouchersLoading.classList.remove('d-none');
+        vouchersLoading.innerHTML = `
+          <div class="spinner-border text-danger" role="status">
+            <span class="visually-hidden">Eliminando...</span>
+          </div>
+          <p class="text-muted mt-2">Eliminando vouchers vencidos...</p>
+        `;
+        
+        const resp = await fetch(`manage.php?action=delete_expired`);
+        const data = await resp.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Error al eliminar vouchers vencidos');
+        }
+        
+        const deletedCount = data.deleted_count || 0;
+        const errorCount = data.error_count || 0;
+        const deletedCodes = data.deleted_codes || [];
+        
+        let message = `✓ Operación completada\n\n`;
+        message += `Vouchers eliminados: ${deletedCount}\n`;
+        if (errorCount > 0) {
+          message += `Errores: ${errorCount}\n`;
+        }
+        if (deletedCodes.length > 0) {
+          message += `\nCódigos eliminados:\n${deletedCodes.join(', ')}`;
+        } else {
+          message += `\nNo se encontraron vouchers vencidos.`;
+        }
+        
+        alert(message);
+        logEvent('Vouchers vencidos eliminados', { deletedCount, errorCount });
+        
+        // Recargar lista
+        loadVouchers();
+        
+      } catch (err) {
+        alert('Error al eliminar vouchers vencidos: ' + err.message);
+        console.error(err);
+        
+        // Restaurar vista en caso de error
+        const vouchersLoading = document.getElementById('vouchersLoading');
+        const vouchersContainer = document.getElementById('vouchersContainer');
+        vouchersLoading.classList.add('d-none');
+        vouchersContainer.classList.remove('d-none');
       }
     }
   </script>

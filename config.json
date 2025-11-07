@@ -15,7 +15,7 @@
     "printer_name": "",
     "paper_width_mm": 80,
     "font_name": "Courier New",
-    "logo_path": "C:/xampp/htdocs/MyWifiHostal/logo-full-print.png",
+    "logo_path": "logo-full-print.png",
     "output_dir": "./tickets"
   },
   "branding": {

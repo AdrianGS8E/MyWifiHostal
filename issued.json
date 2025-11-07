@@ -1,3 +1,10 @@
 {
-    "issued": []
+    "issued": [
+        {
+            "code": "FCASTP",
+            "ts": "2025-11-07T21:16:04+01:00",
+            "profile": "two_days",
+            "ssid": "HOSTAL BOLIVAR"
+        }
+    ]
 }
