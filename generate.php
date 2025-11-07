@@ -252,11 +252,44 @@ $ticketHtml = function(string $forPdf) use($hostelName,$code,$profileLabel,$ssid
 
 // Intentar Dompdf si está disponible
 $dompdfAvailable = false;
+$mpdfAvailable = false;
 $vendorAutoload = $baseDir . '/vendor/autoload.php';
 if (is_file($vendorAutoload)) {
     require_once $vendorAutoload;
+    if (class_exists('Mpdf\\Mpdf')) {
+        $mpdfAvailable = true;
+    }
     if (class_exists('Dompdf\\Dompdf')) {
         $dompdfAvailable = true;
+    }
+}
+
+if ($mpdfAvailable) {
+    try {
+        $html = $ticketHtml('pdf');
+        $wMm = $paperWidthMm;
+        $hMm = 150.0;
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => [$wMm, $hMm],
+            'margin_left' => 6,
+            'margin_right' => 6,
+            'margin_top' => 6,
+            'margin_bottom' => 6,
+        ]);
+        $mpdf->WriteHTML($html);
+
+        if (!is_dir($ticketsDir)) @mkdir($ticketsDir, 0777, true);
+        $outPath = $ticketsDir . '/voucher-' . $code . '.pdf';
+        $mpdf->Output($outPath, \Mpdf\Output\Destination::FILE);
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="voucher-'.$code.'.pdf"');
+        header('Cache-Control: no-store');
+        readfile($outPath);
+        exit;
+    } catch (Throwable $e) {
+        
     }
 }
 
