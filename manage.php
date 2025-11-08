@@ -34,8 +34,8 @@ function saveIssued(string $path, array $data): void {
     }
 }
 
-// Provisión en MikroTik User Manager vía API
-function provision_mikrotik_api(array $router, string $customer, string $username, string $password, string $umProfile, string $logPath): ?bool {
+// Obtener cliente de MikroTik User Manager vía API
+function get_mikrotik_client(array $router, string $logPath) {
     $host = $router['host'] ?? '';
     $apiPort = (int)($router['api_port'] ?? 8728);
     $apiSSL = (bool)($router['api_ssl'] ?? false);
@@ -63,10 +63,47 @@ function provision_mikrotik_api(array $router, string $customer, string $usernam
             'timeout' => 6,
         ]);
         
+        log_line($logPath, 'Conexión exitosa a MikroTik router');
         return $client; // Retornar cliente para operaciones posteriores
     } catch (\Throwable $e) {
         log_line($logPath, 'Excepción API conexión: '.$e->getMessage());
-        return false;
+        return null;
+    }
+}
+
+// Obtener todos los usuarios de MikroTik User Manager
+function get_mikrotik_users($client, string $customer, string $logPath): array {
+    try {
+        if (!$client || $client === null) {
+            log_line($logPath, 'GET_USERS: Cliente API no disponible');
+            return [];
+        }
+        
+        log_line($logPath, 'GET_USERS: Consultando usuarios en User Manager (customer: '.$customer.')');
+        
+        // Consultar todos los usuarios del customer
+        $q = (new \RouterOS\Query('/tool/user-manager/user/print'))
+            ->where('customer', $customer);
+        $users = $client->query($q)->read();
+        
+        log_line($logPath, 'GET_USERS: Encontrados '.count($users).' usuarios');
+        
+        $result = [];
+        foreach ($users as $user) {
+            $username = $user['username'] ?? '';
+            if ($username !== '') {
+                $result[$username] = [
+                    'username' => $username,
+                    'disabled' => ($user['disabled'] ?? 'no') === 'yes',
+                    'profile' => $user['actual-profile'] ?? '',
+                ];
+            }
+        }
+        
+        return $result;
+    } catch (\Throwable $e) {
+        log_line($logPath, 'GET_USERS: Error al obtener usuarios: '.$e->getMessage());
+        return [];
     }
 }
 
@@ -242,17 +279,49 @@ try {
     
     // Operación: Listar vouchers
     if ($action === 'list') {
-        $issued = loadIssued($issuedPath);
+        log_line($logPath, 'LIST: Iniciando listado de vouchers');
         
-        // Añadir información adicional sobre archivos PDF
-        foreach ($issued['issued'] as &$voucher) {
-            $pdfPath = $ticketsDir . '/voucher-' . $voucher['code'] . '.pdf';
-            $voucher['has_pdf'] = file_exists($pdfPath);
+        $issued = loadIssued($issuedPath);
+        $customer = $router['customer'] ?? 'admin';
+        
+        // Conectar a MikroTik y obtener estado actual
+        log_line($logPath, 'LIST: Conectando a MikroTik para sincronizar datos...');
+        $client = get_mikrotik_client($router, $logPath);
+        $mikrotikUsers = [];
+        
+        if ($client && $client !== null) {
+            log_line($logPath, 'LIST: Obteniendo usuarios de MikroTik User Manager');
+            $mikrotikUsers = get_mikrotik_users($client, $customer, $logPath);
+            log_line($logPath, 'LIST: Usuarios obtenidos de MikroTik: '.count($mikrotikUsers));
+        } else {
+            log_line($logPath, 'LIST: ADVERTENCIA - No se pudo conectar a MikroTik, mostrando solo datos locales');
         }
+        
+        // Añadir información adicional sobre archivos PDF y estado en MikroTik
+        foreach ($issued['issued'] as &$voucher) {
+            $code = $voucher['code'];
+            $pdfPath = $ticketsDir . '/voucher-' . $code . '.pdf';
+            $voucher['has_pdf'] = file_exists($pdfPath);
+            
+            // Estado en MikroTik
+            if (isset($mikrotikUsers[$code])) {
+                $voucher['mikrotik_status'] = 'active';
+                $voucher['mikrotik_disabled'] = $mikrotikUsers[$code]['disabled'];
+                $voucher['mikrotik_profile'] = $mikrotikUsers[$code]['profile'];
+            } else {
+                $voucher['mikrotik_status'] = 'not_found';
+                $voucher['mikrotik_disabled'] = null;
+                $voucher['mikrotik_profile'] = null;
+            }
+        }
+        
+        log_line($logPath, 'LIST: Listado completado. Total vouchers: '.count($issued['issued']));
         
         echo json_encode([
             'success' => true,
-            'vouchers' => array_reverse($issued['issued']) // Más recientes primero
+            'vouchers' => array_reverse($issued['issued']), // Más recientes primero
+            'mikrotik_connected' => ($client !== null),
+            'mikrotik_users_count' => count($mikrotikUsers)
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -281,7 +350,7 @@ try {
                 
                 // Intentar eliminar de MikroTik
                 log_line($logPath, 'DELETE: Conectando a MikroTik router...');
-                $client = provision_mikrotik_api($router, $customer, $code, $code, '', $logPath);
+                $client = get_mikrotik_client($router, $logPath);
                 
                 if ($client && $client !== false && $client !== null) {
                     log_line($logPath, 'DELETE: Conexión exitosa, procediendo a eliminar de User Manager');
@@ -358,7 +427,7 @@ try {
         log_line($logPath, 'EXPIRED: Total vouchers a revisar: '.count($issued['issued']));
         
         // Conectar una sola vez al router
-        $client = provision_mikrotik_api($router, $customer, '', '', '', $logPath);
+        $client = get_mikrotik_client($router, $logPath);
         if (!$client || $client === false || $client === null) {
             log_line($logPath, 'EXPIRED: ADVERTENCIA - No se pudo conectar al router, solo se eliminarán del registro local');
         }
@@ -466,7 +535,7 @@ try {
                 log_line($logPath, 'MODIFY_PROFILE: Perfil UM: '.$umProfile);
                 
                 // Modificar en MikroTik
-                $client = provision_mikrotik_api($router, $customer, $code, $code, $umProfile, $logPath);
+                $client = get_mikrotik_client($router, $logPath);
                 if ($client && $client !== false && $client !== null) {
                     log_line($logPath, 'MODIFY_PROFILE: Conexión exitosa, aplicando cambios en router');
                     $success = modify_mikrotik_profile($client, $code, $customer, $umProfile, $logPath);
@@ -527,7 +596,7 @@ try {
                 log_line($logPath, 'RESET_TIME: Perfil actual: '.$currentProfile.' (UM: '.$umProfile.')');
                 
                 // Reiniciar en MikroTik
-                $client = provision_mikrotik_api($router, $customer, $code, $code, $umProfile, $logPath);
+                $client = get_mikrotik_client($router, $logPath);
                 if ($client && $client !== false && $client !== null) {
                     log_line($logPath, 'RESET_TIME: Conexión exitosa, aplicando reinicio');
                     $success = reset_mikrotik_time($client, $code, $customer, $umProfile, $logPath);
