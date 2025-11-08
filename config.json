@@ -2,7 +2,7 @@
   "router": {
     "host": "192.168.10.1",
     "username": "admin",
-    "password": "admin",
+    "password": "adminHB*2025",
     "api_port": 8728,
     "api_ssl": false,
     "ssh_port": 22,

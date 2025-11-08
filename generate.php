@@ -222,6 +222,10 @@ $ticketHtml = function(string $forPdf) use($hostelName,$code,$profileLabel,$ssid
         $logoTag = '<img src="'.htmlspecialchars($src).'" style="max-width:60mm;max-height:20mm;height:auto;display:block;margin:0 auto;">';
     }
 
+    
+    log_line($logPath, 'Etiqueta completa del logo: <img src="'.htmlspecialchars($pdfLogoPath).'">');
+
+
     return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
         .'<style>
         @page{ size: 80mm 150mm; margin: 4mm; }
