@@ -618,59 +618,8 @@ $branding = $config['branding'] ?? ['hostel_name'=>'HOSTAL','ssid'=>'WIFI','port
     }
     
     async function deleteExpiredVouchers() {
-      if (!confirm(`🗑️ ¿Eliminar todos los vouchers VENCIDOS?\n\nEsto eliminará automáticamente todos los vouchers cuyo tiempo de validez haya expirado.\n\nVouchers que se eliminarán:\n- 2 días: vencidos hace más de 2 días\n- 1 semana: vencidos hace más de 7 días\n- 1 mes: vencidos hace más de 30 días\n\n¿Continuar?`)) return;
-      
-      try {
-        // Mostrar indicador de carga
-        const vouchersLoading = document.getElementById('vouchersLoading');
-        const vouchersContainer = document.getElementById('vouchersContainer');
-        vouchersContainer.classList.add('d-none');
-        vouchersLoading.classList.remove('d-none');
-        vouchersLoading.innerHTML = `
-          <div class="spinner-border text-danger" role="status">
-            <span class="visually-hidden">Eliminando...</span>
-          </div>
-          <p class="text-muted mt-2">Eliminando vouchers vencidos...</p>
-        `;
-        
-        const resp = await fetch(`manage.php?action=delete_expired`);
-        const data = await resp.json();
-        
-        if (!data.success) {
-          throw new Error(data.error || 'Error al eliminar vouchers vencidos');
-        }
-        
-        const deletedCount = data.deleted_count || 0;
-        const errorCount = data.error_count || 0;
-        const deletedCodes = data.deleted_codes || [];
-        
-        let message = `✓ Operación completada\n\n`;
-        message += `Vouchers eliminados: ${deletedCount}\n`;
-        if (errorCount > 0) {
-          message += `Errores: ${errorCount}\n`;
-        }
-        if (deletedCodes.length > 0) {
-          message += `\nCódigos eliminados:\n${deletedCodes.join(', ')}`;
-        } else {
-          message += `\nNo se encontraron vouchers vencidos.`;
-        }
-        
-        alert(message);
-        logEvent('Vouchers vencidos eliminados', { deletedCount, errorCount });
-        
-        // Recargar lista
-        loadVouchers();
-        
-      } catch (err) {
-        alert('Error al eliminar vouchers vencidos: ' + err.message);
-        console.error(err);
-        
-        // Restaurar vista en caso de error
-        const vouchersLoading = document.getElementById('vouchersLoading');
-        const vouchersContainer = document.getElementById('vouchersContainer');
-        vouchersLoading.classList.add('d-none');
-        vouchersContainer.classList.remove('d-none');
-      }
+      alert('⚠️ Función no disponible\n\nEsta función ya no está disponible porque los vouchers se gestionan completamente desde MikroTik User Manager sin registro local.\n\nPara eliminar usuarios vencidos, debes hacerlo manualmente desde tu router MikroTik o configurar políticas de expiración en el User Manager.');
+      logEvent('Intento de eliminar vouchers vencidos - Función deshabilitada');
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

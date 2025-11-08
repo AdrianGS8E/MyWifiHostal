@@ -5,7 +5,6 @@ declare(strict_types=1);
 
 $baseDir = __DIR__;
 $configPath = $baseDir . '/config.json';
-$issuedPath = $baseDir . '/issued.json';
 $ticketsDir = $baseDir . '/tickets';
 
 $config = json_decode(@file_get_contents($configPath), true) ?? [];
@@ -22,8 +21,6 @@ $code = strtoupper(trim((string)($_GET['code'] ?? '')));
 
 $length = max(4, (int)($vconf['length'] ?? 6));
 $charset = $vconf['charset'] ?? 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-$registryPath = $vconf['local_registry_path'] ?? './issued.json';
-$registryPath = str_starts_with($registryPath, '.') ? ($baseDir . '/' . ltrim($registryPath, './')) : $registryPath;
 
 $paperWidthMm = (float)($printing['paper_width_mm'] ?? 80);
 $pdfLogoPath = $printing['logo_path'] ?? ($baseDir . '/logo-full-print.png');
@@ -156,21 +153,6 @@ function provision_mikrotik(array $router, string $customer, string $username, s
     }
 }
 
-function loadIssued(string $path): array {
-    if (!file_exists($path)) return ['issued'=>[]];
-    $data = json_decode((string)file_get_contents($path), true);
-    return is_array($data) ? $data : ['issued'=>[]];
-}
-
-function saveIssued(string $path, array $data): void {
-    $dir = dirname($path);
-    if (!is_dir($dir)) @mkdir($dir, 0777, true);
-    $bytes = @file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
-    if ($bytes === false) {
-        throw new \RuntimeException('No se pudo guardar el registro de vouchers en '. $path);
-    }
-}
-
 function generateCode(int $length, string $charset): string {
     $out = '';
     $max = strlen($charset) - 1;
@@ -180,27 +162,15 @@ function generateCode(int $length, string $charset): string {
     return $out;
 }
 
-$issued = loadIssued($issuedPath);
-$existing = array_column($issued['issued'], 'code');
-
+// Generar código de voucher
 if ($code === '') {
-    // Generar evitando colisión
-    $tries = 0;
-    do {
-        $code = generateCode($length, $charset);
-        $tries++;
-    } while (in_array($code, $existing, true) && $tries < 20);
+    log_line($logPath, 'Generando código aleatorio de '.$length.' caracteres');
+    $code = generateCode($length, $charset);
 } else {
-    if (in_array($code, $existing, true)) {
-        // ya existe; generar uno nuevo con sufijo para evitar conflicto
-        $base = rtrim($code);
-        $suffix = generateCode(2, $charset);
-        $code = substr($base, 0, max(1, $length-2)) . $suffix;
-    }
+    log_line($logPath, 'Usando código proporcionado: '.$code);
 }
 
-$issued['issued'][] = [ 'code'=>$code, 'ts'=>date('c'), 'profile'=>$profile, 'ssid'=>$ssid ];
-saveIssued($issuedPath, $issued);
+log_line($logPath, 'Código de voucher: '.$code);
 
 // Provisión en MikroTik (crear usuario y activar perfil)
 $customer = $router['customer'] ?? 'admin';
